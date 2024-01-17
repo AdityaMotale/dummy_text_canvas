@@ -11,61 +11,108 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Flutter Demo',
+      debugShowCheckedModeBanner: false,
+      title: 'Dummy Text Canvas',
       theme: ThemeData(
-
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const MyHomePage(title: 'Flutter Demo Home Page'),
+      home: const HomeView(),
     );
   }
 }
 
-class MyHomePage extends StatefulWidget {
-  const MyHomePage({super.key, required this.title});
-
-  final String title;
-
-  @override
-  State<MyHomePage> createState() => _MyHomePageState();
-}
-
-class _MyHomePageState extends State<MyHomePage> {
-  int _counter = 0;
-
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
-  }
+class HomeView extends StatelessWidget {
+  const HomeView({Key? key}) : super(key: key);
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
-        title: Text(widget.title),
-      ),
-      body: Center(
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: <Widget>[
-            const Text(
-              'You have pushed the button this many times:',
+      body: Stack(
+        alignment: AlignmentDirectional.center,
+        children: [
+          CustomPaint(
+            painter: AppCanvas(),
+            size: Size.infinite,
+          ),
+          Positioned(
+            bottom: 20,
+            child: Container(
+              width: MediaQuery.of(context).size.width * 0.9,
+              height: 50,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: const BorderRadius.all(Radius.circular(25)),
+                border: Border.all(
+                  color: Colors.grey.shade500,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  IconButton(
+                    icon: const Icon(
+                      Icons.undo_rounded,
+                      color: Colors.black,
+                    ),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.add_rounded,
+                      size: 28,
+                      color: Colors.black,
+                    ),
+                    onPressed: () {},
+                  ),
+                  IconButton(
+                    icon: const Icon(
+                      Icons.redo_rounded,
+                      color: Colors.black,
+                    ),
+                    onPressed: () {},
+                  ),
+                ],
+              ),
             ),
-            Text(
-              '$_counter',
-              style: Theme.of(context).textTheme.headlineMedium,
-            ),
-          ],
-        ),
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter,
-        tooltip: 'Increment',
-        child: const Icon(Icons.add),
+          ),
+        ],
       ),
     );
   }
+}
+
+class AppCanvas extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    // background
+    Rect background = Rect.fromLTWH(0, 0, size.width, size.height);
+    Paint backgroundPaint = Paint()..color = Colors.grey.shade300;
+    canvas.drawRect(background, backgroundPaint);
+
+    // grid
+    Paint gridPaint = Paint()
+      ..color = Colors.grey.shade400
+      ..strokeWidth = 1;
+
+    int horizontalCells = 18;
+    int verticalCells = 36;
+
+    double cellWidth = size.width / horizontalCells;
+    double cellHeight = size.height / verticalCells;
+
+    for (int i = 0; i <= horizontalCells; i++) {
+      double x = i * cellWidth;
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), gridPaint);
+    }
+
+    for (int i = 0; i <= verticalCells; i++) {
+      double y = i * cellHeight;
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), gridPaint);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => true;
 }
