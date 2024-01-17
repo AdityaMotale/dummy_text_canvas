@@ -1,9 +1,19 @@
+import '../canvas/text_painter.canvas.dart';
 import 'package:flutter/material.dart';
 
 import '../canvas/app_canvas.canvas.dart';
 
-class HomeView extends StatelessWidget {
+class HomeView extends StatefulWidget {
   const HomeView({Key? key}) : super(key: key);
+
+  @override
+  State<HomeView> createState() => _HomeViewState();
+}
+
+class _HomeViewState extends State<HomeView> {
+  final List<TextObject> textObjects = [];
+  TextObject? draggedObject;
+  Offset? dragStart;
 
   @override
   Widget build(BuildContext context) {
@@ -11,9 +21,45 @@ class HomeView extends StatelessWidget {
       body: Stack(
         alignment: AlignmentDirectional.center,
         children: [
-          CustomPaint(
-            painter: AppCanvas(),
-            size: Size.infinite,
+          GestureDetector(
+            onPanStart: (details) {
+              final renderBox = context.findRenderObject() as RenderBox;
+
+              Offset localPosition = renderBox.globalToLocal(
+                details.globalPosition,
+              );
+
+              for (var textObject in textObjects) {
+                if (textObject.contains(localPosition)) {
+                  draggedObject = textObject;
+                  dragStart = localPosition;
+                  break;
+                }
+              }
+            },
+            onPanUpdate: (details) {
+              if (draggedObject != null && dragStart != null) {
+                setState(() {
+                  final renderBox = context.findRenderObject() as RenderBox;
+
+                  Offset localPosition = renderBox.globalToLocal(
+                    details.globalPosition,
+                  );
+
+                  Offset delta = localPosition - dragStart!;
+                  draggedObject!.position += delta;
+                  dragStart = localPosition;
+                });
+              }
+            },
+            onPanEnd: (details) {
+              draggedObject = null;
+              dragStart = null;
+            },
+            child: CustomPaint(
+              painter: AppCanvas(textObjects: textObjects),
+              size: Size.infinite,
+            ),
           ),
           Positioned(
             bottom: 20,
@@ -44,7 +90,11 @@ class HomeView extends StatelessWidget {
                       size: 28,
                       color: Colors.black,
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      textObjects.add(
+                        TextObject(content: "This is a dummy string"),
+                      );
+                    },
                   ),
                   IconButton(
                     icon: const Icon(
