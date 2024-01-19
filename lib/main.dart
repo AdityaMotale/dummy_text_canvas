@@ -1,8 +1,10 @@
+import 'package:ecko/ecko.dart';
 import 'package:flutter/material.dart';
 
 import 'views/home.view.dart';
 
 void main() {
+  Ecko.init(printLogs: false);
   runApp(const MyApp());
 }
 

@@ -14,6 +14,7 @@ class _HomeViewState extends State<HomeView> {
   final List<TextObject> textObjects = [];
   TextObject? draggedObject;
   Offset? dragStart;
+  bool isObjectSelected = false;
 
   @override
   Widget build(BuildContext context) {
@@ -21,46 +22,115 @@ class _HomeViewState extends State<HomeView> {
       body: Stack(
         alignment: AlignmentDirectional.center,
         children: [
-          GestureDetector(
-            onPanStart: (details) {
+          Listener(
+            onPointerDown: (event) {
+              // Reset selection
+              for (var textObject in textObjects) {
+                textObject.isSelected = false;
+                isObjectSelected = false;
+              }
+
+              // Get the tap position
               final renderBox = context.findRenderObject() as RenderBox;
+              Offset localPosition = renderBox.globalToLocal(event.position);
 
-              Offset localPosition = renderBox.globalToLocal(
-                details.globalPosition,
-              );
-
+              // Select the object if tap is near it
               for (var textObject in textObjects) {
                 if (textObject.contains(localPosition)) {
-                  draggedObject = textObject;
-                  dragStart = localPosition;
+                  textObject.isSelected = true;
+                  isObjectSelected = true;
                   break;
                 }
               }
-            },
-            onPanUpdate: (details) {
-              if (draggedObject != null && dragStart != null) {
-                setState(() {
-                  final renderBox = context.findRenderObject() as RenderBox;
 
-                  Offset localPosition = renderBox.globalToLocal(
-                    details.globalPosition,
-                  );
+              setState(() {});
+            },
+            child: GestureDetector(
+              onTap: () {},
+              onPanStart: (details) {
+                if (!isObjectSelected) return;
 
-                  Offset delta = localPosition - dragStart!;
-                  draggedObject!.position += delta;
-                  dragStart = localPosition;
-                });
-              }
-            },
-            onPanEnd: (details) {
-              draggedObject = null;
-              dragStart = null;
-            },
-            child: CustomPaint(
-              painter: AppCanvas(textObjects: textObjects),
-              size: Size.infinite,
+                final renderBox = context.findRenderObject() as RenderBox;
+
+                Offset localPosition = renderBox.globalToLocal(
+                  details.globalPosition,
+                );
+
+                for (var textObject in textObjects) {
+                  // Check if the object is selected and the pan starts near it
+                  if (textObject.isSelected &&
+                      textObject.contains(localPosition)) {
+                    draggedObject = textObject;
+                    dragStart = localPosition;
+                    break;
+                  }
+                }
+              },
+              onPanUpdate: (details) {
+                if (draggedObject != null && dragStart != null) {
+                  setState(() {
+                    final renderBox = context.findRenderObject() as RenderBox;
+
+                    Offset localPosition = renderBox.globalToLocal(
+                      details.globalPosition,
+                    );
+
+                    Offset delta = localPosition - dragStart!;
+                    draggedObject!.position += delta;
+                    dragStart = localPosition;
+                  });
+                }
+              },
+              onPanEnd: (details) {
+                draggedObject = null;
+                dragStart = null;
+              },
+              child: CustomPaint(
+                painter: AppCanvas(textObjects: textObjects),
+                size: Size.infinite,
+              ),
             ),
           ),
+
+          // top tool bar
+          isObjectSelected
+              ? Positioned(
+                  top: 40,
+                  child: Container(
+                    width: MediaQuery.of(context).size.width * 0.34,
+                    height: 50,
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: const BorderRadius.all(Radius.circular(25)),
+                      border: Border.all(
+                        color: Colors.grey.shade500,
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceAround,
+                      children: [
+                        IconButton(
+                          icon: const Icon(
+                            Icons.delete_rounded,
+                            color: Colors.black,
+                          ),
+                          onPressed: () {},
+                        ),
+                        IconButton(
+                          icon: const Icon(
+                            Icons.edit_rounded,
+                            color: Colors.black,
+                          ),
+                          onPressed: () {},
+                        ),
+                      ],
+                    ),
+                  ),
+                )
+              : const SizedBox(),
+
+          // Bottom tool bar
           Positioned(
             bottom: 20,
             child: Container(
