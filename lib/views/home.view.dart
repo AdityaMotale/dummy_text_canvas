@@ -160,10 +160,14 @@ class _HomeViewState extends State<HomeView> {
                       size: 28,
                       color: Colors.black,
                     ),
-                    onPressed: () {
-                      textObjects.add(
-                        TextObject(content: "This is a dummy string"),
+                    onPressed: () async {
+                      var textEditingController = TextEditingController();
+                      await openTextObjectDialog(
+                        context,
+                        textEditingController,
                       );
+                      textEditingController.dispose();
+                      setState(() {});
                     },
                   ),
                   IconButton(
@@ -179,6 +183,200 @@ class _HomeViewState extends State<HomeView> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> openTextObjectDialog(
+    BuildContext context,
+    TextEditingController textEditingController, {
+    TextObject? localTextObject,
+  }) async {
+    const availableFontSizes = <double>[14, 18, 24, 32, 48];
+    const availableFontStyles = [
+      "Poppins",
+      "Inter",
+      "Sacramento",
+      "Montserrat",
+    ];
+    const availableColors = [
+      Colors.black,
+      Colors.red,
+      Colors.cyan,
+      Colors.purple,
+      Colors.green,
+    ];
+
+    // by default set to 14
+    double fontSize = availableFontSizes[1];
+
+    // by default set to poppins
+    String fontStyle = availableFontStyles[0];
+
+    // by default set to black
+    Color textColor = availableColors[0];
+
+    await showDialog(
+      barrierDismissible: true,
+      context: context,
+      builder: (context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter localSetState) {
+            return Scaffold(
+              backgroundColor: Colors.transparent,
+              body: Center(
+                child: Container(
+                  width: MediaQuery.of(context).size.width * 0.86,
+                  height: MediaQuery.of(context).size.height * 0.43,
+                  color: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      const Text(
+                        "Create/Edit Text",
+                        style: TextStyle(
+                          fontSize: 24,
+                          fontWeight: FontWeight.w600,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                      TextField(
+                        controller: textEditingController,
+                        decoration: const InputDecoration(
+                          hintText: "Dummy Text",
+                          labelText: 'Text To Create',
+                          border: OutlineInputBorder(),
+                        ),
+                      ),
+                      SizedBox(
+                        height: 30,
+                        child: SingleChildScrollView(
+                          scrollDirection: Axis.horizontal,
+                          child: Wrap(
+                            spacing: 8.0, // Space between items
+                            children: List<Widget>.generate(
+                              availableColors.length,
+                              (index) => InkWell(
+                                onTap: () {
+                                  localSetState(() {
+                                    textColor = availableColors[index];
+                                  });
+                                },
+                                child: Container(
+                                  width: 25,
+                                  height: 25,
+                                  margin: const EdgeInsets.symmetric(
+                                    horizontal: 4.0,
+                                  ), // Additional optional margin
+                                  decoration: BoxDecoration(
+                                    shape: BoxShape.circle,
+                                    color: availableColors[index],
+                                    border: Border.all(
+                                      color: Colors.indigo,
+                                      width: availableColors[index] == textColor
+                                          ? 4
+                                          : 0,
+                                    ),
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceAround,
+                        children: [
+                          DropdownButton<double>(
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                            value: fontSize,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                            ),
+                            items: availableFontSizes
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(
+                                      e.round().toString(),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (size) {
+                              localSetState(() {
+                                fontSize = size ?? availableFontSizes.first;
+                              });
+                            },
+                          ),
+                          DropdownButton<String>(
+                            icon: const Icon(Icons.keyboard_arrow_down_rounded),
+                            value: fontStyle,
+                            style: const TextStyle(
+                              color: Colors.black,
+                              fontSize: 18,
+                            ),
+                            items: availableFontStyles
+                                .map(
+                                  (e) => DropdownMenuItem(
+                                    value: e,
+                                    child: Text(
+                                      e.toString(),
+                                    ),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: (style) {
+                              localSetState(() {
+                                fontStyle = style ?? availableFontStyles.first;
+                              });
+                            },
+                          ),
+                        ],
+                      ),
+                      SizedBox(
+                        width: MediaQuery.of(context).size.width * 0.8,
+                        child: localTextObject != null
+                            ? ElevatedButton(
+                                child: const Text("Update"),
+                                onPressed: () {
+                                  // localTextObject ??= TextObject(
+                                  //   content: "The newly created text",
+                                  // );
+                                  // textObjects.add(localTextObject!);
+                                  Navigator.of(context).pop();
+                                },
+                              )
+                            : ElevatedButton(
+                                child: const Text("Create New Text"),
+                                onPressed: () {
+                                  if (textEditingController.text.isEmpty) {
+                                    return;
+                                  }
+
+                                  localTextObject ??= TextObject(
+                                    content: textEditingController.text,
+                                    fontFamily: fontStyle,
+                                    fontSize: fontSize,
+                                    color: textColor,
+                                  );
+
+                                  textObjects.add(localTextObject!);
+
+                                  Navigator.of(context).pop();
+                                },
+                              ),
+                      )
+                    ],
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
     );
   }
 }

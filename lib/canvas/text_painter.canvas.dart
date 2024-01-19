@@ -1,30 +1,30 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 
 class TextObject {
   String content;
   Offset position;
-  TextStyle style;
+  String fontFamily;
+  double fontSize;
+  Color color;
 
-  bool _isSelected = false;
-
-  bool get isSelected => _isSelected;
-
-  set isSelected(bool value) {
-    _isSelected = value;
-  }
+  bool isSelected = false;
 
   TextObject({
     required this.content,
-    this.position = const Offset(100, 100),
-    this.style = const TextStyle(color: Colors.black),
+    required this.fontFamily,
+    required this.fontSize,
+    required this.color,
+    this.position = const Offset(100, 250),
   });
 
   void render(Canvas canvas) {
     TextSpan span = TextSpan(
       text: content,
-      style: const TextStyle(
-        color: Colors.black,
-        fontSize: 24,
+      style: GoogleFonts.getFont(
+        fontFamily,
+        fontSize: fontSize,
+        color: color,
       ),
     );
 
