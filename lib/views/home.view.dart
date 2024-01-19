@@ -12,6 +12,9 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   final List<TextObject> textObjects = [];
+  final List<List<TextObject>> undoStack = [];
+  final List<List<TextObject>> redoStack = [];
+
   TextObject? draggedObject;
   Offset? dragStart;
   bool isObjectSelected = false;
@@ -38,6 +41,7 @@ class _HomeViewState extends State<HomeView> {
               for (var textObject in textObjects) {
                 if (textObject.contains(localPosition)) {
                   textObject.isSelected = true;
+                  draggedObject = textObject;
                   isObjectSelected = true;
                   break;
                 }
@@ -46,7 +50,6 @@ class _HomeViewState extends State<HomeView> {
               setState(() {});
             },
             child: GestureDetector(
-              onTap: () {},
               onPanStart: (details) {
                 if (!isObjectSelected) return;
 
@@ -60,7 +63,6 @@ class _HomeViewState extends State<HomeView> {
                   // Check if the object is selected and the pan starts near it
                   if (textObject.isSelected &&
                       textObject.contains(localPosition)) {
-                    draggedObject = textObject;
                     dragStart = localPosition;
                     break;
                   }
@@ -82,7 +84,6 @@ class _HomeViewState extends State<HomeView> {
                 }
               },
               onPanEnd: (details) {
-                draggedObject = null;
                 dragStart = null;
               },
               child: CustomPaint(
@@ -115,14 +116,46 @@ class _HomeViewState extends State<HomeView> {
                             Icons.delete_rounded,
                             color: Colors.black,
                           ),
-                          onPressed: () {},
+                          onPressed: () {
+                            textObjects.removeWhere((element) {
+                              if (draggedObject != null && isObjectSelected) {
+                                return draggedObject!.position ==
+                                    element.position;
+                              }
+
+                              return false;
+                            });
+
+                            draggedObject = null;
+                            isObjectSelected = false;
+
+                            updateState();
+                            setState(() {});
+                          },
                         ),
                         IconButton(
                           icon: const Icon(
                             Icons.edit_rounded,
                             color: Colors.black,
                           ),
-                          onPressed: () {},
+                          onPressed: () async {
+                            if (draggedObject == null) return;
+
+                            final textEditingController = TextEditingController(
+                              text: draggedObject!.content,
+                            );
+
+                            await openTextObjectDialog(
+                              context,
+                              textEditingController: textEditingController,
+                              localTextObject: draggedObject,
+                            );
+
+                            draggedObject = null;
+                            isObjectSelected = false;
+
+                            setState(() {});
+                          },
                         ),
                       ],
                     ),
@@ -148,11 +181,11 @@ class _HomeViewState extends State<HomeView> {
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.undo_rounded,
-                      color: Colors.black,
+                      color: undoStack.isEmpty ? Colors.grey : Colors.black,
                     ),
-                    onPressed: () {},
+                    onPressed: undo,
                   ),
                   IconButton(
                     icon: const Icon(
@@ -161,21 +194,16 @@ class _HomeViewState extends State<HomeView> {
                       color: Colors.black,
                     ),
                     onPressed: () async {
-                      var textEditingController = TextEditingController();
-                      await openTextObjectDialog(
-                        context,
-                        textEditingController,
-                      );
-                      textEditingController.dispose();
+                      await openTextObjectDialog(context);
                       setState(() {});
                     },
                   ),
                   IconButton(
-                    icon: const Icon(
+                    icon: Icon(
                       Icons.redo_rounded,
-                      color: Colors.black,
+                      color: redoStack.isEmpty ? Colors.grey : Colors.black,
                     ),
-                    onPressed: () {},
+                    onPressed: redo,
                   ),
                 ],
               ),
@@ -186,9 +214,50 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
+  ///
+  /// To be used when text object is added or edited
+  ///
+  void updateState() {
+    undoStack.add(List.from(textObjects));
+    redoStack.clear();
+  }
+
+  void undo() {
+    if (undoStack.isNotEmpty) {
+      // Save the current state to redo stack
+      redoStack.add(List.from(textObjects));
+
+      textObjects.clear();
+
+      List<TextObject> previousState = undoStack.removeLast();
+
+      textObjects.addAll(previousState);
+
+      setState(() {});
+      return;
+    }
+
+    textObjects.clear();
+
+    setState(() {});
+  }
+
+  void redo() {
+    if (redoStack.isNotEmpty) {
+      // Save the current state to undo stack
+      undoStack.add(List.from(textObjects));
+
+      textObjects.clear();
+
+      textObjects.addAll(redoStack.removeLast());
+
+      setState(() {});
+    }
+  }
+
   Future<void> openTextObjectDialog(
-    BuildContext context,
-    TextEditingController textEditingController, {
+    BuildContext context, {
+    TextEditingController? textEditingController,
     TextObject? localTextObject,
   }) async {
     const availableFontSizes = <double>[14, 18, 24, 32, 48];
@@ -207,18 +276,25 @@ class _HomeViewState extends State<HomeView> {
     ];
 
     // by default set to 14
-    double fontSize = availableFontSizes[1];
+    double fontSize = localTextObject != null
+        ? localTextObject.fontSize
+        : availableFontSizes[1];
 
     // by default set to poppins
-    String fontStyle = availableFontStyles[0];
+    String fontStyle = localTextObject != null
+        ? localTextObject.fontFamily
+        : availableFontStyles[0];
 
     // by default set to black
-    Color textColor = availableColors[0];
+    Color textColor =
+        localTextObject != null ? localTextObject.color : availableColors[0];
 
     await showDialog(
       barrierDismissible: true,
       context: context,
       builder: (context) {
+        textEditingController ??= TextEditingController();
+
         return StatefulBuilder(
           builder: (BuildContext context, StateSetter localSetState) {
             return Scaffold(
@@ -342,22 +418,43 @@ class _HomeViewState extends State<HomeView> {
                             ? ElevatedButton(
                                 child: const Text("Update"),
                                 onPressed: () {
-                                  // localTextObject ??= TextObject(
-                                  //   content: "The newly created text",
-                                  // );
-                                  // textObjects.add(localTextObject!);
+                                  if (textEditingController!.text.isEmpty &&
+                                      localTextObject == null) {
+                                    return;
+                                  }
+
+                                  FocusScope.of(context).unfocus();
+
+                                  final updatedLocalTextObject = TextObject(
+                                    content: textEditingController!.text,
+                                    fontFamily: fontStyle,
+                                    fontSize: fontSize,
+                                    color: textColor,
+                                    position: localTextObject!.position,
+                                  );
+
+                                  textObjects.removeWhere(
+                                    (element) =>
+                                        element.position ==
+                                        localTextObject!.position,
+                                  );
+
+                                  textObjects.add(updatedLocalTextObject);
+
+                                  updateState();
+
                                   Navigator.of(context).pop();
                                 },
                               )
                             : ElevatedButton(
                                 child: const Text("Create New Text"),
                                 onPressed: () {
-                                  if (textEditingController.text.isEmpty) {
+                                  if (textEditingController!.text.isEmpty) {
                                     return;
                                   }
 
                                   localTextObject ??= TextObject(
-                                    content: textEditingController.text,
+                                    content: textEditingController!.text,
                                     fontFamily: fontStyle,
                                     fontSize: fontSize,
                                     color: textColor,
@@ -365,10 +462,12 @@ class _HomeViewState extends State<HomeView> {
 
                                   textObjects.add(localTextObject!);
 
+                                  updateState();
+
                                   Navigator.of(context).pop();
                                 },
                               ),
-                      )
+                      ),
                     ],
                   ),
                 ),
